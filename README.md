@@ -1,8 +1,15 @@
 # HyperTerm Video
 
-A production-grade terminal video player written in Rust, featuring high-performance multi-threaded decoding, advanced rendering modes, and cross-platform support.
+A production-grade terminal video player written in Rust, featuring high-performance multi-threaded decoding, advanced rendering modes, integrated file browser, and cross-platform support.
 
 ## Features
+
+### Interactive File Browser & Playlist
+- **Built-in file browser** - Browse your system for videos
+- **Playlist management** - Organize videos and play them sequentially
+- **Default video player** - Run without arguments to open the file browser
+- **Direct playback** - Pass video file as argument for immediate playback
+- **Intuitive UI** - Ratatui-based interface with visual feedback
 
 ### Performance
 - **Multi-threaded pipeline**: Decoder → Scaler → Renderer with lock-free queues
@@ -23,11 +30,7 @@ A production-grade terminal video player written in Rust, featuring high-perform
 - **Truecolor RGB**: Full 24-bit color support with Floyd-Steinberg dithering
 
 ### Video Format Support
-- MP4
-- MKV (Matroska)
-- AVI
-- MOV (QuickTime)
-- WebM
+- MP4, MKV (Matroska), AVI, MOV (QuickTime), WebM, FLV, WMV, M4V, 3GP, OGV
 
 ### Advanced Features
 - **Aspect-ratio correction**: Proper video display proportions
@@ -37,28 +40,69 @@ A production-grade terminal video player written in Rust, featuring high-perform
 - **Real-time FPS monitoring**
 - **Settings menu** for runtime configuration
 
-## Controls
+## Quick Start
+
+### As Default Video Player (File Browser Mode)
+
+```bash
+# Just run the executable
+hyperterm-video
+
+# Browse videos with arrow keys, press ENTER to play
+```
+
+### Direct Playback
+
+```bash
+# Play a specific video immediately
+hyperterm-video ~/Videos/movie.mp4
+```
+
+## File Browser Controls
+
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Navigate files |
+| `ENTER` | Open directory or play video |
+| `a` | Add video to playlist |
+| `TAB` | Switch between Browser/Playlist/Settings |
+| `DELETE` | Remove from playlist |
+| `c` | Clear playlist |
+| `F1/h` | Show help |
+| `q/ESC` | Quit |
+
+### Browser Views
+
+#### 📁 File Browser Tab
+- Browse your file system
+- See video files with file sizes
+- Add videos to playlist with `a` key
+
+#### ▶ Playlist Tab
+- View all queued videos
+- Select which video to play next
+- Delete individual entries or clear all
+- Current video marked with ▶ indicator
+
+#### ⚙️ Settings Tab
+- **r** - Cycle render mode (ASCII/Block/Braille)
+- **c** - Cycle color mode (Mono/ANSI16/ANSI256/Truecolor)
+- **q** - Cycle quality preset (Performance/Balanced/Quality/Ultra)
+- **d** - Toggle dithering on/off
+- **h** - Toggle hardware decoding
+
+### Playback Controls
 
 | Key | Action |
 |-----|--------|
 | `Space` | Pause/Resume |
-| `Q` | Quit |
+| `q` | Quit |
 | `Left/Right` | Seek backward/forward |
 | `Up/Down` | Adjust volume |
-| `F` | Toggle FPS display |
-| `C` | Cycle color modes |
-| `R` | Cycle render modes |
-| `M` | Open settings menu |
-
-## Settings Menu
-
-Access via `M` key:
-- **Quality Presets**: Performance, Balanced, Quality, Ultra
-- **Color Mode**: Select from available color modes
-- **Render Mode**: Choose rendering algorithm
-- **FPS Limit**: Cap frame rate
-- **Dithering**: Enable/disable dithering
-- **Hardware Decode**: Toggle hardware acceleration
+| `f` | Toggle FPS display |
+| `c` | Cycle color modes |
+| `r` | Cycle render modes |
+| `m` | Open settings menu |
 
 ## Building
 
@@ -86,34 +130,41 @@ choco install ffmpeg
 # Build with release optimizations (recommended)
 cargo build --release
 
-# Run
-./target/release/hyperterm-video <video_file>
+# Binary location
+./target/release/hyperterm-video
 
-# Or run directly
-cargo run --release -- <video_file>
+# Run tests
+cargo test
+
+# Development build
+cargo build
+cargo run
 ```
 
 ## Architecture
 
 ```
 src/
-├── main.rs           # Entry point and CLI argument handling
-├── app.rs            # Application state and lifecycle management
-├── decoder.rs        # FFmpeg-based video decoding thread
-├── scaler.rs         # Video scaling and color conversion thread
-├── renderer.rs       # Terminal rendering pipeline with buffering
-├── braille.rs        # Braille character rendering engine
-├── ansi.rs           # ANSI color and rendering utilities
-├── ui.rs             # Ratatui-based settings menu UI
-├── input.rs          # Crossterm keyboard input handling
-├── config.rs         # Configuration and settings management
-└── fps.rs            # FPS calculation and monitoring
+├── main.rs              # Entry point with optional CLI video path
+├── app.rs               # Application state and lifecycle
+├── file_browser.rs      # File system navigation
+├── file_browser_ui.rs   # Multi-view UI (Browser/Playlist/Settings)
+├── playlist.rs          # Playlist management
+├── decoder.rs           # FFmpeg video decoding thread
+├── scaler.rs            # Video scaling and color conversion
+├── renderer.rs          # Terminal rendering pipeline
+├── braille.rs           # Rendering engines (Braille/Block/ASCII)
+├── ansi.rs              # Color utilities and dithering
+├── ui.rs                # Ratatui settings menu
+├── input.rs             # Keyboard input handling
+├── config.rs            # Configuration management
+└── fps.rs               # FPS calculation and monitoring
 ```
 
 ### Threading Model
 
 ```
-┌─────────────┐     ┌──────��──────┐     ┌──────────────┐
+┌─────────────┐     ┌─────────────┐     ┌────────��─────┐
 │ Decoder     │────▶│ Scaler      │────▶│ Renderer     │
 │ Thread      │     │ Thread      │     │ Thread       │
 └─────────────┘     └─────────────┘     └──────────────┘
@@ -158,6 +209,42 @@ Comprehensive error handling with `anyhow`:
 - ✅ macOS (Intel, Apple Silicon)
 - ✅ Windows (x86_64)
 
+## Setting as Default Video Player
+
+### Linux
+```bash
+# Create .desktop file
+sudo tee /usr/share/applications/hyperterm-video.desktop > /dev/null << EOF
+[Desktop Entry]
+Type=Application
+Name=HyperTerm Video
+Exec=/usr/local/bin/hyperterm-video %F
+MimeType=video/mp4;video/x-matroska;video/x-msvideo;video/quicktime;video/webm;
+Categories=Video;
+EOF
+
+# Make it default
+xdg-mime default hyperterm-video.desktop video/mp4
+```
+
+### macOS
+```bash
+# Build and copy to Applications
+cargo build --release
+cp target/release/hyperterm-video /usr/local/bin/
+
+# Set as default with `open -a HyperTerm\ Video video.mp4`
+```
+
+### Windows
+```bash
+# Copy executable to PATH or create shortcut
+cargo build --release
+copy target\release\hyperterm-video.exe "C:\Program Files\HyperTerm Video\"
+
+# Associate via Settings > Apps > Default apps > Video player
+```
+
 ## Development
 
 ### Code Quality
@@ -165,12 +252,6 @@ Comprehensive error handling with `anyhow`:
 - Comprehensive error handling
 - Well-documented functions
 - Modular architecture for extensibility
-
-### Building for Development
-```bash
-cargo build
-cargo run -- video.mp4
-```
 
 ### Running Tests
 ```bash
@@ -180,14 +261,6 @@ cargo test
 ## License
 
 MIT License - See LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-1. Code compiles without warnings
-2. Follows Rust conventions
-3. Includes error handling
-4. Maintains modularity
 
 ## Performance Tips
 
@@ -204,6 +277,10 @@ Contributions are welcome! Please ensure:
 - Verify video file format is supported
 - Check file path is correct
 
+**File browser won't open:**
+- Check HOME or USERPROFILE environment variable is set
+- Ensure read permissions on video directories
+
 **Performance issues:**
 - Switch to Performance preset
 - Reduce terminal window size
@@ -212,14 +289,37 @@ Contributions are welcome! Please ensure:
 
 **Color rendering issues:**
 - Verify terminal supports target color mode
-- Try different color modes (C key)
+- Try different color modes (c key in settings)
 - Check terminal COLORTERM variable
+
+## Architecture Highlights
+
+### Multi-threaded Design
+The player uses three independent threads connected by lock-free queues:
+1. **Decoder Thread** - Reads and decodes video frames
+2. **Scaler Thread** - Scales frames and converts color spaces
+3. **Renderer Thread** - Generates terminal output
+
+This design maximizes throughput and responsiveness without busy-waiting.
+
+### Smart Rendering
+- Only updates terminal regions that changed
+- Double buffering prevents flicker
+- Adaptive quality based on playback speed
+- SIMD-accelerated pixel operations
+
+### File Browser Architecture
+- Efficient directory traversal with caching
+- Supports deep navigation
+- Intelligent video format detection
+- Cross-platform path handling
 
 ## Future Enhancements
 
 - Subtitle support
 - Audio visualization
-- Playlist support
-- Video filters
+- Advanced playlist features (shuffle, repeat)
+- Video filters and effects
 - Recording capability
-- Thumbnail preview
+- Thumbnail preview cache
+- Recent files / bookmarks
